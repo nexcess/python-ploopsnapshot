@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+
+###
+# Copyright (C) 2016  Nexcess.net L.L.C.
+###
+
+import argparse
+import datetime
+import logging
+import ploopsnapshot
+import uuid
+
+def main():
+  logging.basicConfig(level=logging.INFO)
+
+  parser = argparse.ArgumentParser(description="Manages daily Ploop snapshots based on container ID.")
+  parser.add_argument("ctid", help="the container id to backup")
+  parser.add_argument("ddir", help="the directory to store the database in")
+  args = parser.parse_args()
+
+  snapName = datetime.datetime.now().strftime("%a")
+  uid = str(uuid.uuid4())
+  pb = ploopsnapshot.ploopSnapshot(args.ctid, args.ddir)
+
+  snapshots = pb.getSnapshots()
+  snap = pb.createSnapshot(uid)
+  if not snap:
+    if snapName in snapshots:
+      curuuid = snapshots[snapName]
+      pb.log.info("day %s has id %s..." % (snapName, curuuid))
+      pb.log.info("updating %s to %s for %s..." % (curuuid, uid, snapName))
+      pb.updateDB(snapName, uid, method="update")
+      pb.log.info("removing snapshot with id %s..." % curuuid)
+      pb.deleteSnapshot(curuuid)
+    else:
+      pb.log.info("day %s not in db..." % snapName)
+      pb.log.info("inserting %s for %s..." % (uid, snapName))
+      pb.updateDB(snapName, uid, method="insert")
+  else:
+    self.log.error("snapshot failed!")
+
+if __name__ == '__main__':
+  main()
